@@ -1,0 +1,11 @@
+extends: standard
+parser: babel-eslint
+rules:
+  no-trailing-spaces: 0
+  indent: 0
+plugins:
+  - standard
+  - promise
+  - security
+env:
+  mocha: true

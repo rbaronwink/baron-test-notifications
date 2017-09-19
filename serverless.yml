@@ -1,0 +1,166 @@
+service: service-payments
+
+frameworkVersion: ">=1.1.0 <2.0.0"
+
+package:
+  individually: true
+  exclude:
+      - docs/**
+      - helpers/**
+      - node_modules/**
+      - test/**
+
+plugins:
+  - serverless-plugin-optimize
+  - serverless-offline
+  - serverless-mocha-plugin
+  - serverless-sqs-alarms-plugin
+
+custom:
+  region: ${self:provider.region}
+    stage: ${opt:stage, self:provider.stage}
+    prefix: ${self:custom.stage}-${self:service}
+    process: ${self:custom.prefix}-process
+    config: ${self:custom.prefix}-config
+    sns: ${self:custom.prefix}-trigger
+    sqs: ${self:custom.prefix}-messages
+
+    sqs-alarms:
+      - queue: ${self:custom.sqs}
+        topic: ${self:custom.sns}
+        thresholds:
+          - 1
+          - 50
+          - 100
+          - 500
+          - 1000
+          - 5000
+  optimize:
+    plugins:
+    - - 'transform-runtime'
+      - polyfill: false
+      - regenerator: true
+    - - 'transform-async-to-generator'
+    - - 'babel-plugin-inline-import'
+    - - 'transform-object-rest-spread'
+    presets:
+    - - env
+      - targets:
+          node: 6.10.0
+    - - flow
+    debug: true
+    ignore: ['aws-sdk', 'aws-xray-sdk-core']
+
+  serverless-offline:
+    babelOptions:
+      presets:
+      - - env
+        - targets:
+            node: 6.10.0
+      - - flow
+      plugins:
+      - - 'transform-runtime'
+        - polyfill: false
+        - regenerator: true
+      - - 'transform-async-to-generator'
+      - - 'babel-plugin-inline-import'
+      - - 'transform-object-rest-spread'
+
+
+provider:
+  name: aws
+  runtime: nodejs6.10
+  stage: dev
+  region: us-east-1
+  versionFunctions: false
+  timeout: 300
+  iamRoleStatements:
+  - Effect: Allow
+    Action:
+      - dynamodb:GetItem
+      - dynamodb:PutItem
+    Resource: arn:aws:dynamodb:*:*:table/${self:custom.config}
+  - Effect: Allow
+    Action:
+      - lambda:InvokeFunction
+    Resource: arn:aws:lambda:*:*:function:${self:custom.process}
+  - Effect: Allow
+    Action:
+      - sqs:DeleteMessage
+      - sqs:ReceiveMessage
+    Resource: arn:aws:sqs:*:*:${self:custom.sqs}
+  environment:
+    STAGE: ${opt:stage, self:provider.stage}
+    REGION: ${opt:region, self:provider.region}
+
+  vpc:
+    securityGroupIds:
+     - sg-6d83db13
+    subnetIds:
+     - subnet-ac9ac290
+     - subnet-edf37ea5
+     - subnet-30d5041c
+
+functions:
+  scale:
+      timeout: 10
+      handler: functions/scale.handler
+      name: ${self:custom.prefix}-scale
+      environment:
+        config: ${self:custom.config}
+      events:
+        - sns: ${self:custom.sns}
+
+    worker:
+      timeout: 10
+      handler: functions/worker.handler
+      name: ${self:custom.prefix}-worker
+      environment:
+        config: ${self:custom.config}
+        process: ${self:custom.process}
+      events:
+        - schedule: rate(1 minute)
+    process:
+        timeout: 60
+        handler: functions/process.handler
+        name: ${self:custom.prefix}-process
+        environment:
+          region: ${self:custom.region}
+          sqs: ${self:custom.sqs}
+
+resources:
+  Resources:
+
+    Messages:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.sqs}
+        MessageRetentionPeriod: 1209600
+        VisibilityTimeout: 60
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt:
+            - MessagesDeadLetterQueue
+            - Arn
+          maxReceiveCount: 10
+
+    MessagesDeadLetterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.sqs}-dead-letter-queue
+        MessageRetentionPeriod: 1209600
+
+    Config:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.config}
+        AttributeDefinitions:
+          - AttributeName: key
+            AttributeType: S
+        KeySchema:
+          - AttributeName: key
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+

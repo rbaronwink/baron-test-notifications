@@ -1,0 +1,50 @@
+{
+  "name": "wink-notifications",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "test": "nsp check; yarn run test:eslint; yarn run test:mocha;",
+    "test:eslint": "./node_modules/.bin/eslint src --fix",
+    "test:mocha": "nyc mocha --compilers js:babel-core/register --recursive",
+    "deploy:cicd-test": "./node_modules/.bin/serverless deploy -v --stage test --region us-east-1",
+    "deploy:cicd-dev": "./node_modules/.bin/serverless deploy -v --stage dev --region us-east-1"
+  },
+  "devDependencies": {
+    "babel": "^6.23.0",
+    "babel-cli": "^6.24.1",
+    "babel-core": "^6.25.0",
+    "babel-eslint": "^7.2.3",
+    "babel-plugin-inline-import": "^2.0.5",
+    "babel-plugin-transform-object-rest-spread": "^6.23.0",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-polyfill": "^6.23.0",
+    "babel-preset-env": "^1.6.0",
+    "babel-preset-flow": "^6.23.0",
+    "babel-preset-latest": "^6.24.1",
+    "babel-register": "^6.24.1",
+    "babel-runtime": "^6.23.0",
+    "chai": "^4.1.1",
+    "eslint": "^4.1.1",
+    "eslint-config-standard": "^10.2.1",
+    "eslint-plugin-promise": "^3.5.0",
+    "eslint-plugin-security": "^1.4.0",
+    "eslint-plugin-standard": "^3.0.1",
+    "mocha": "^3.4.2",
+    "nsp": "^2.8.0",
+    "nyc": "^11.1.0",
+    "serverless-mocha-plugin": "^1.5.1",
+    "should": "^11.2.1",
+    "sinon": "^3.2.1"
+  },
+  "dependencies": {
+    "alai": "^1.0.3",
+    "aws-sdk": "^2.69.0",
+    "eslint-plugin-import": "^2.7.0",
+    "eslint-plugin-node": "^5.1.1",
+    "lawos": "^1.1.5",
+    "serverless": "^1.8.0",
+    "serverless-offline": "^3.14.1",
+    "serverless-plugin-optimize": "^3.0.0-rc.1"
+  }
+}
